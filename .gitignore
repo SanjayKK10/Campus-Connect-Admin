@@ -1,0 +1,18 @@
+# Supabase
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules
+
+# Build
+dist
+
+# Logs
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
