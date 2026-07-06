@@ -43,7 +43,7 @@ export default function RequestDetailModal({ request, onClose }: RequestDetailMo
     setActionError(null);
 
     try {
-      await handleApprove(request.request_id, request.entity_id);
+      await handleApprove(request.request_id);
       onClose();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to approve request.');
