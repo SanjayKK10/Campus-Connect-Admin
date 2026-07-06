@@ -3,7 +3,7 @@
 interface RequestCardProps {
   request: AdminQueueItem;
   onViewDetails: (request: AdminQueueItem) => void;
-  onApprove: (requestId: string, entityId: string) => void;
+  onApprove: (requestId: string) => void;
   onReject: (requestId: string) => void;
   isApproving: boolean;
   isRejecting: boolean;
@@ -79,7 +79,7 @@ export default function RequestCard({
       <div className="mt-auto flex flex-col gap-3">
         <button
           type="button"
-          onClick={() => onApprove(request.request_id, request.entity_id)}
+          onClick={() => onApprove(request.request_id)}
           disabled={!isPending || isApproving}
           className="btn-accent w-full rounded-xl px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
         >

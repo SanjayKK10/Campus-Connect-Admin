@@ -6,7 +6,7 @@ interface RequestSectionProps {
   icon: string;
   queueItems: AdminQueueItem[];
   onViewDetails: (request: AdminQueueItem) => void;
-  onApprove: (requestId: string, entityId: string) => void;
+  onApprove: (requestId: string) => void;
   onReject: (requestId: string) => void;
   approvingId: string | null;
   rejectingId: string | null;
