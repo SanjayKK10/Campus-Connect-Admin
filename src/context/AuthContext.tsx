@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabaseClient';
 
 interface AdminProfile {
@@ -36,14 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let isMounted = true;
     const supabase = getSupabaseClient();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsLoading(true);
-
+    const handleSession = async (session: Session | null) => {
       try {
         if (session?.user?.id) {
-          // User is authenticated, verify admin status
           const { data, error } = await supabase
             .from('admins')
             .select('*')
@@ -51,30 +50,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
           if (error || !data) {
-            // No admin record found, sign out
             await supabase.auth.signOut();
+            if (!isMounted) return;
             setIsAuthenticated(false);
             setProfile(null);
-          } else {
-            // Admin record found, set authenticated state
-            setIsAuthenticated(true);
-            setProfile(data as AdminProfile);
+            return;
           }
-        } else {
-          // No session
+
+          if (!isMounted) return;
+          setIsAuthenticated(true);
+          setProfile(data as AdminProfile);
+          return;
+        }
+
+        if (!isMounted) return;
+        setIsAuthenticated(false);
+        setProfile(null);
+      } catch (err) {
+        console.error('Auth session error:', err);
+        if (!isMounted) return;
+        setIsAuthenticated(false);
+        setProfile(null);
+      }
+    };
+
+    const restoreSession = async () => {
+      setIsLoading(true);
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Failed to restore auth session:', error);
+        }
+
+        await handleSession(data?.session ?? null);
+      } catch (err) {
+        console.error('Unexpected auth restore error:', err);
+        if (isMounted) {
           setIsAuthenticated(false);
           setProfile(null);
         }
-      } catch (err) {
-        console.error('Auth state change error:', err);
-        setIsAuthenticated(false);
-        setProfile(null);
       } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void restoreSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setIsLoading(true);
+      await handleSession(session);
+      if (isMounted) {
         setIsLoading(false);
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.subscription?.unsubscribe();
     };
   }, []);
