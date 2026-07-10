@@ -38,7 +38,7 @@ export default function AdminDashboard() {
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-3xl font-bold" style={{ color: 'var(--color-cc-text)' }}>
-                Admin Dashboard
+               RyniXsoft Admin Dashboard
               </h1>
               <p className="mt-2" style={{ color: 'var(--color-cc-muted)' }}>
                 Review the pending verification queue from Supabase.

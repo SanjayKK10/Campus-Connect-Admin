@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import ThunderLogo from './ThunderLogo';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -6,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 export default function Navbar() {
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -32,8 +34,22 @@ export default function Navbar() {
         </span>
       </div>
 
-      {/* Right: Theme toggle + Logout */}
-      <div className="flex items-center gap-2">
+      {/* Right: Navigation + Theme + Logout */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <nav className="flex flex-wrap items-center gap-2 rounded-full border border-violet-200/70 bg-white/70 p-1 text-sm">
+          <NavLink
+            to="/dashboard"
+            className={`rounded-full px-3 py-2 transition ${location.pathname === '/dashboard' ? 'bg-violet-600 text-white' : 'text-slate-700'}`}
+          >
+            Verification Dashboard
+          </NavLink>
+          <NavLink
+            to="/events"
+            className={`rounded-full px-3 py-2 transition ${location.pathname.startsWith('/events') ? 'bg-violet-600 text-white' : 'text-slate-700'}`}
+          >
+            Event Management
+          </NavLink>
+        </nav>
         <button
           type="button"
           onClick={toggleTheme}
