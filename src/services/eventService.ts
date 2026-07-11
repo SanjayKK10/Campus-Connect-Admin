@@ -44,7 +44,7 @@ export async function getCurrentAdminUser(): Promise<User> {
   return session.user;
 }
 
-export async function getAdminEvents(): Promise<Event[]> {
+export async function getAllVisibleEvents(): Promise<Event[]> {
   await getCurrentAdminUser();
   const supabase = getSupabaseClient();
 
@@ -57,6 +57,29 @@ export async function getAdminEvents(): Promise<Event[]> {
 
   if (error) {
     throw new Error(error.message || 'Unable to load events.');
+  }
+
+  return (data ?? []) as Event[];
+}
+
+export async function getAdminEvents(): Promise<Event[]> {
+  return getAllVisibleEvents();
+}
+
+export async function getMyEvents(): Promise<Event[]> {
+  const user = await getCurrentAdminUser();
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('organizer_id', user.id)
+    .eq('is_deleted', false)
+    .order('scheduled_at', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message || 'Unable to load your events.');
   }
 
   return (data ?? []) as Event[];
@@ -157,65 +180,18 @@ export async function updateEvent(eventId: string, updates: UpdateEventPayload):
   return data as Event;
 }
 
-export async function softDeleteEvent(eventId: string): Promise<{ success: boolean; message: string }> {
-  const user = await getCurrentAdminUser();
+export async function getEventRsvpCount(eventId: string): Promise<number> {
+  await getCurrentAdminUser();
   const supabase = getSupabaseClient();
 
-  const { data, error } = await supabase
-    .from('events')
-    .update({
-      is_deleted: true,
-      updated_at: new Date().toISOString(),
-    })
+  const { count, error } = await supabase
+    .from('rsvps')
+    .select('rsvp_id', { count: 'exact', head: true })
     .eq('event_id', eventId)
-    .eq('organizer_id', user.id)
-    .select('*')
-    .maybeSingle();
+    .eq('status', 'going');
 
   if (error) {
-    throw new Error(error.message || 'Unable to deactivate the event.');
-  }
-
-  if (!data) {
-    return {
-      success: false,
-      message: 'Event not found or you do not have permission to deactivate it.',
-    };
-  }
-
-  return {
-    success: true,
-    message: 'Event deactivated successfully.',
-  };
-}
-
-export async function getEventRsvpCount(eventId: string): Promise<number> {
-  const user = await getCurrentAdminUser();
-  const supabase = getSupabaseClient();
-
-  const { data: eventData, error: eventError } = await supabase
-    .from('events')
-    .select('rsvp_count')
-    .eq('event_id', eventId)
-    .eq('organizer_id', user.id)
-    .eq('is_deleted', false)
-    .maybeSingle();
-
-  if (eventError) {
-    throw new Error(eventError.message || 'Unable to load RSVP count.');
-  }
-
-  if (typeof eventData?.rsvp_count === 'number' && eventData.rsvp_count >= 0) {
-    return eventData.rsvp_count;
-  }
-
-  const { count, error: countError } = await supabase
-    .from('rsvps')
-    .select('*', { count: 'exact', head: true })
-    .eq('event_id', eventId);
-
-  if (countError) {
-    throw new Error(countError.message || 'Unable to count RSVPs.');
+    throw new Error(error.message || 'Unable to count RSVPs.');
   }
 
   return count ?? 0;
