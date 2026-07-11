@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
-import { getAdminEvents, getCurrentAdminUser, softDeleteEvent } from '../services/eventService';
+import { getAllVisibleEvents, getCurrentAdminUser, getMyEvents } from '../services/eventService';
 import type { Event, EventCategory, EventCategoryOption } from '../types/event';
 
 export default function EventManagement() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<Event[]>([]);
+  const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [browseEvents, setBrowseEvents] = useState<Event[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,10 +23,17 @@ export default function EventManagement() {
       setError(null);
 
       try {
-        const [currentUser, data] = await Promise.all([getCurrentAdminUser(), getAdminEvents()]);
+        const [currentUser, ownedEvents, visibleEvents] = await Promise.all([
+          getCurrentAdminUser(),
+          getMyEvents(),
+          getAllVisibleEvents(),
+        ]);
+
         if (!isMounted) return;
+
         setCurrentUserId(currentUser.id);
-        setEvents(data);
+        setMyEvents(ownedEvents);
+        setBrowseEvents(visibleEvents.filter((event) => event.organizer_id !== currentUser.id));
       } catch (err) {
         if (!isMounted) return;
         setError(err instanceof Error ? err.message : 'Unable to load events.');
@@ -43,31 +51,18 @@ export default function EventManagement() {
     };
   }, []);
 
-  const filteredEvents = useMemo(() => {
-    if (activeFilter === 'All') return events;
-    return events.filter((event) => {
+  const filterEvents = (items: Event[]) => {
+    if (activeFilter === 'All') return items;
+
+    return items.filter((event) => {
       const normalizedCategory = (event.category ?? '').toLowerCase();
       const filterValue = activeFilter.toLowerCase();
       return normalizedCategory === filterValue || normalizedCategory === `${filterValue}s`;
     });
-  }, [activeFilter, events]);
-
-  const handleDeactivate = async (event: Event) => {
-    const confirmed = window.confirm(`Deactivate “${event.title}”? This will hide it from active listings.`);
-    if (!confirmed) return;
-
-    try {
-      const result = await softDeleteEvent(event.event_id);
-      if (!result.success) {
-        setError(result.message);
-        return;
-      }
-      setEvents((current) => current.filter((item) => item.event_id !== event.event_id));
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to deactivate the event.');
-    }
   };
+
+  const filteredMyEvents = useMemo(() => filterEvents(myEvents), [activeFilter, myEvents]);
+  const filteredBrowseEvents = useMemo(() => filterEvents(browseEvents), [activeFilter, browseEvents]);
 
   return (
     <div className="min-h-screen px-4 pb-12 pt-6 md:px-6">
@@ -101,29 +96,63 @@ export default function EventManagement() {
             </div>
           ) : null}
 
-          {!isLoading && filteredEvents.length === 0 ? (
-            <div className="glass-card px-6 py-16 text-center">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--color-cc-text)' }}>
-                No events found
-              </h2>
-              <p className="mt-2 text-sm" style={{ color: 'var(--color-cc-muted)' }}>
-                Create your first event to make it available across CampusConnect.
-              </p>
-            </div>
-          ) : null}
+          {!isLoading ? (
+            <div className="space-y-10">
+              <section>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-cc-text)' }}>
+                    My Events
+                  </h2>
+                  <span className="text-sm" style={{ color: 'var(--color-cc-muted)' }}>
+                    {currentUserId ? 'Owned by you' : ''}
+                  </span>
+                </div>
+                {filteredMyEvents.length > 0 ? (
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {filteredMyEvents.map((event) => (
+                      <EventCard
+                        key={event.event_id}
+                        event={event}
+                        onView={(selectedEvent) => navigate(`/events/${selectedEvent.event_id}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass-card px-6 py-16 text-center">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--color-cc-text)' }}>
+                      No events created by Rynixsoft yet.
+                    </h3>
+                  </div>
+                )}
+              </section>
 
-          {!isLoading && filteredEvents.length > 0 ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {filteredEvents.map((event) => (
-                <EventCard
-                  key={event.event_id}
-                  event={event}
-                  isOwner={event.organizer_id === currentUserId}
-                  onView={(selectedEvent) => navigate(`/events/${selectedEvent.event_id}`)}
-                  onEdit={(selectedEvent) => navigate(`/events/${selectedEvent.event_id}/edit`)}
-                  onDeactivate={handleDeactivate}
-                />
-              ))}
+              <section>
+                <div className="mb-4">
+                  <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-cc-text)' }}>
+                    Browse All Events
+                  </h2>
+                </div>
+                {filteredBrowseEvents.length > 0 ? (
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {filteredBrowseEvents.map((event) => (
+                      <EventCard
+                        key={event.event_id}
+                        event={event}
+                        onView={(selectedEvent) => navigate(`/events/${selectedEvent.event_id}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass-card px-6 py-16 text-center">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--color-cc-text)' }}>
+                      No events found
+                    </h3>
+                    <p className="mt-2 text-sm" style={{ color: 'var(--color-cc-muted)' }}>
+                      There are no other events available for the selected filter.
+                    </p>
+                  </div>
+                )}
+              </section>
             </div>
           ) : null}
         </main>

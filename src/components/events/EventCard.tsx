@@ -1,11 +1,10 @@
+import { useEffect, useState } from 'react';
+import { getEventRsvpCount } from '../../services/eventService';
 import type { Event } from '../../types/event';
 
 interface EventCardProps {
   event: Event;
-  isOwner: boolean;
   onView: (event: Event) => void;
-  onEdit: (event: Event) => void;
-  onDeactivate: (event: Event) => void;
 }
 
 function formatEventDateTime(value: string | null | undefined) {
@@ -20,7 +19,32 @@ function formatEventDateTime(value: string | null | undefined) {
   });
 }
 
-export default function EventCard({ event, isOwner, onView, onEdit, onDeactivate }: EventCardProps) {
+export default function EventCard({ event, onView }: EventCardProps) {
+  const [rsvpCount, setRsvpCount] = useState(event.rsvp_count ?? 0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRsvpCount() {
+      try {
+        const count = await getEventRsvpCount(event.event_id);
+        if (isMounted) {
+          setRsvpCount(count);
+        }
+      } catch {
+        if (isMounted) {
+          setRsvpCount(0);
+        }
+      }
+    }
+
+    void loadRsvpCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [event.event_id]);
+
   return (
     <article className="glass-card overflow-hidden">
       {event.cover_image_url ? (
@@ -74,7 +98,7 @@ export default function EventCard({ event, isOwner, onView, onEdit, onDeactivate
           <div className="flex items-center justify-between">
             <span>RSVPs</span>
             <span className="font-medium" style={{ color: 'var(--color-cc-text)' }}>
-              {event.rsvp_count}
+              {rsvpCount}
             </span>
           </div>
         </div>
@@ -87,24 +111,6 @@ export default function EventCard({ event, isOwner, onView, onEdit, onDeactivate
           >
             View
           </button>
-          {isOwner ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onEdit(event)}
-                className="rounded-xl border border-slate-200/70 bg-white/70 px-3 py-2 text-sm font-medium text-slate-700"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onDeactivate(event)}
-                className="rounded-xl border border-rose-200/70 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
-              >
-                Deactivate
-              </button>
-            </>
-          ) : null}
         </div>
       </div>
     </article>
