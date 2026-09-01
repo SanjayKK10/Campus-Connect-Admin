@@ -98,17 +98,8 @@ export default function AdminDashboard() {
               Settings
             </h2>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-cc-muted)' }}>
-              Connected view:{' '}
-              <code
-                style={{
-                  background: 'rgba(156,124,255,0.12)',
-                  color: 'var(--color-cc-accent)',
-                  borderRadius: '6px',
-                  padding: '2px 8px',
-                }}
-              >
-                v_verification_queue
-              </code>
+            
+
             </p>
             <p className="mt-3 text-sm" style={{ color: 'var(--color-cc-muted)' }}>
               Loaded records: {queueItems.length} total ({sectionStats.users} users,{' '}
